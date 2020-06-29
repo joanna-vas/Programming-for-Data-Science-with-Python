@@ -1,0 +1,76 @@
+SQL Project | Investigate a Relational Database
+Ioanna Vasilopoulou
+
+
+Question Set #1:
+1. Create a query that lists each movie, the film category is classified in, and the number of times it has been rented out.
+For this query, you will need 5 tables: Category, Film_Category, Inventory, Rental and Film. Your solution should have three columns: Film title, Category name and Count of Rentals.
+
+
+#Input:
+SELECT film.title as film_title, category.name as category_name, COUNT(rental.rental_id) as rental_count
+FROM film, film_category, inventory, rental, category
+WHERE film_category.film_id = film.film_id 
+AND film.film_id = inventory.film_id 
+AND inventory.inventory_id = rental.inventory_id
+AND category.category_id = film_category.category_id
+AND category.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music') 
+GROUP BY 1, 2
+ORDER BY 2
+
+
+2. Can you provide a table with the movie titles and divide them into 4 levels (first_quarter, second_quarter, third_quarter, and final_quarter) based on the quartiles (25%, 50%, 75%) of the rental duration for movies across all categories?
+
+
+#Input for Family Friendly Movies:
+SELECT film.title, category.name, film.rental_duration, 
+NTILE(4) OVER (ORDER BY film.rental_duration) AS standard_quartile 
+FROM category, film_category, film
+WHERE category.category_id=film_category.category_id 
+AND film_category.film_id=film.film_id
+AND category.name IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music');
+
+#Input for Other Categories (exc.Family Friendly Movies):
+SELECT film.title, category.name, film.rental_duration, 
+NTILE(4) OVER (ORDER BY film.rental_duration) AS standard_quartile 
+FROM category, film_category, film
+WHERE category.category_id=film_category.category_id 
+AND film_category.film_id=film.film_id
+AND category.name NOT IN ('Animation', 'Children', 'Classics', 'Comedy', 'Family', 'Music');
+
+
+Question Set #2:
+1. Write a query that returns the store ID for the store, the year and month and the number of rental orders each store has fulfilled for that month. Your table should include a column for each of the following: year, month, store ID and count of rental orders fulfilled during that month.
+        
+#Input:
+SELECT DATE_PART('MONTH', rental_date) rental_month, DATE_PART('YEAR', rental_date) rental_year, store.store_id, COUNT(*) rental_count
+FROM rental
+JOIN payment ON payment.rental_id = rental.rental_id
+JOIN staff ON staff.staff_id = payment.staff_id
+JOIN store ON store.store_id = staff.store_id
+GROUP BY 1,
+         2,
+         3
+ORDER BY 4 desc;
+
+
+2. Can you write a query to capture the customer name, month and year of payment and total payment amount for each month by these top 10 paying customers?
+        
+#Input:
+SELECT DATE_TRUNC('month', payment.payment_date) pay_mon, customer.first_name || ' ' || customer.last_name AS fullname, COUNT(payment.amount) AS pay_countpermon, SUM(payment.amount) AS pay_amount
+FROM customer customer
+JOIN payment payment
+ON payment.customer_id = customer.customer_id
+WHERE customer.first_name || ' ' || customer.last_name IN
+(SELECT Table1.fullname
+FROM
+(SELECT customer.first_name || ' ' || customer.last_name AS fullname, SUM(payment.amount) as amount_total
+FROM customer customer
+JOIN payment payment
+ON payment.customer_id = customer.customer_id
+GROUP BY 1        
+ORDER BY 2 DESC
+LIMIT 10) Table1)
+AND (payment.payment_date BETWEEN '2007-01-01' AND '2008-01-01')
+GROUP BY 2, 1
+ORDER BY 2, 1, 3;
